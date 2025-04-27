@@ -1,0 +1,502 @@
+.containerIndex {
+  display: grid;
+  grid-auto-rows: min-content; /* Rows grow based on content height */
+  grid-auto-columns: 1fr;
+  gap: 0px 0px;
+  grid-auto-flow: row;
+}
+
+/* Banner image section */
+.ImageBannerIndex {
+  grid-area: 1 / 1 / 2 / 2;
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.ImageBannerIndex img {
+  width: 100%;     /* Stretch across the whole screen width */
+  height: auto;    /* Keep natural aspect ratio (no squishing) */
+  display: block;  /* Remove small white spaces below the image */
+}
+
+/* Title section */
+.TitleIndex {
+  grid-area: 2 / 1 / 3 / 2;
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #4CAF50;
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+
+.TitleIndex h1 {
+  font-size: 50px;
+}
+
+/* Create section */
+.CreateIndex {
+  grid-area: 3 / 1 / 4 / 2;
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #1c2a18;
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+
+.CreateIndex a {
+  font-size: 50px;
+  color: black;
+  text-decoration: none;
+}
+
+/* Join section */
+.JoinIndex {
+  grid-area: 4 / 1 / 5 / 2;
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #826cf6;
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+
+.JoinIndex a {
+  font-size: 50px;
+  color: black;
+  text-decoration: none;
+}
+
+/* Hover effect */
+a:hover {
+  color: white;
+}
+
+/* --- Create Page --- */
+
+.containerCreate {
+  display: grid;
+  grid-template-rows: 20% 10% 50% 20%; /* Title, Subheader, Inputs, Button */
+  grid-auto-columns: 1fr;
+  gap: 0px 0px;
+  grid-auto-flow: row;
+  height: 100vh; /* Full height of the screen */
+}
+
+/* Title */
+.TitleCreate {
+  grid-area: 1 / 1 / 2 / 2;
+  font-family: "Bebas Neue", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #4CAF50;
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+.TitleCreate h1 {
+  font-size: 50px;
+}
+
+/* Subheader */
+.SubHeaderCreate {
+  grid-area: 2 / 1 / 3 / 2;
+  font-family: "Cal Sans", sans-serif;
+  font-weight: 600;
+  font-size: 24px;
+  color: #333;
+  text-align: center;
+  padding: 10px;
+}
+
+/* Inputs */
+.Inputs {
+  grid-area: 3 / 1 / 4 / 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.FormFlex {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.inputGroup label {
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+/* Button */
+.CreateButtonBox {
+  grid-area: 4 / 1 / 5 / 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.CreateButtonBox button {
+  font-size: 24px;
+  padding: 10px 20px;
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.CreateButtonBox button:hover {
+  background-color: #826cf6;
+
+}
+
+/* Improved container for lobby layout */
+.containerLobby {
+  display: grid;
+  grid-template-rows: 20% 10% 10% 30% 30%;
+  min-height: 100vh;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+/* Title section - takes full width */
+.TitleLobby {
+  grid-row: 1 / 2;
+  grid-column: 1 / 3;
+  background-color: #4CAF50;
+  color: white;
+  padding: 20px;
+  text-align: center;
+  font-family: "Bebas Neue", sans-serif;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.TitleLobby h1 {
+  font-size: clamp(28px, 5vw, 42px); /* Responsive font size */
+  margin: 0;
+}
+
+/* Welcome section - takes full width */
+.WelcomeLobby {
+  grid-row: 2 / 3;
+  grid-column: 1 / 3;
+  background-color: #f8f8f8;
+  padding: 10px 20px;
+  font-family: "Cal Sans", sans-serif;
+  display: flex;
+  align-items: center;
+  overflow: hidden; /* Prevent text overflow */
+}
+
+.WelcomeLobby h3 {
+  margin: 0;
+  font-size: clamp(14px, 3vw, 18px); /* Responsive font size */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis for very long text */
+}
+
+/* Round info - left side */
+.RoundInfo {
+  grid-row: 3 / 4;
+  grid-column: 1 / 2;
+  background-color: #333;
+  color: white;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  min-height: 100%;
+}
+
+.RoundInfo .round-indicator {
+  font-weight: bold;
+  font-size: clamp(18px, 3vw, 24px); /* Responsive font size */
+  padding: 10px;
+  display: inline-block;
+}
+
+/* Host info section - FIXED VISIBILITY */
+.HostInfo {
+  grid-row: 3 / 4;
+  grid-column: 2 / 3;
+  background-color: #f1f1f1;
+  padding: 10px 20px;
+  font-family: "Cal Sans", sans-serif;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 100%;
+  width: 100%;
+  overflow: visible;
+}
+
+.HostInfo p {
+  margin: 0px 0;
+  font-size: clamp(14px, 2.5vw, 16px);
+  max-width: 100%;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  display: block;
+  width: 100%;
+}
+
+.HostInfo strong {
+  display: inline-block;
+  margin-right: 5px;
+}
+/* Players list - left side */
+.PlayersLobby {
+  grid-row: 4 / 5;
+  grid-column: 1 / 2;
+  background-color: #ffffff;
+  padding: 20px;
+  border-right: 1px solid #e0e0e0;
+  overflow-y: auto;
+}
+
+.PlayersLobby h3 {
+  font-family: "Cal Sans", sans-serif;
+  color: #333;
+  margin-top: 0;
+  font-size: clamp(16px, 3vw, 20px); /* Responsive font size */
+}
+
+.PlayersLobby ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.PlayersLobby li {
+  padding: 10px;
+  margin-bottom: 5px;
+  background-color: #f8f8f8;
+  border-radius: 5px;
+  font-family: "Cal Sans", sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis for very long text */
+}
+
+/* Game messages - right side */
+.GameMessages {
+  grid-row: 4 / 5;
+  grid-column: 2 / 3;
+  background-color: #f8f8f8;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+#game-status-message {
+  font-family: "Cal Sans", sans-serif;
+  font-size: clamp(14px, 2.5vw, 16px); /* Responsive font size */
+}
+
+/* Game controls - full width bottom section - IMPROVED LAYOUT */
+.GameControls {
+  grid-row: 5 / 6;
+  grid-column: 1 / 3;
+  background-color: #1c2a18;
+  padding: 20px;
+  display: flex;
+  flex-direction: row; /* Change from column to row */
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap; /* Allow wrapping on smaller screens */
+  gap: 10px; /* Add spacing between buttons */
+}
+
+/* Container for horizontal button layout */
+/* Container for button layout */
+#next-round-container,
+#secret-form,
+#waiting-message {
+  display: inline-flex; /* Change to inline-flex */
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin: 0 10px; /* Add horizontal margin instead of top margin */
+}
+
+#secret-form
+{
+ color: #826cf6;
+}
+
+#waiting-message {
+ color: #826cf6;
+}
+/* Styling for number buttons */
+#guessed-numbers {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+  max-width: 100%;
+}
+
+.number-button {
+  background-color: #0088cc;
+  border: none;
+  color: white;
+  padding: clamp(15px, 4vw, 25px) clamp(20px, 5vw, 35px);
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: clamp(18px, 3vw, 24px);
+  margin: 5px;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.number-button:hover {
+  background-color: #005580;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+}
+
+/* Control buttons - IMPROVED LAYOUT */
+.button {
+  background-color: #4CAF50;
+  border: none;
+  color: white;
+  padding: clamp(10px, 2vw, 15px) clamp(15px, 3vw, 30px);
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: clamp(16px, 2.5vw, 18px);
+  margin: 5px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  font-family: "Cal Sans", sans-serif;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.button:hover {
+  background-color: #826cf6;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.2);
+}
+
+/* Results container - IMPROVED */
+.results-container {
+  margin-top: 15px;
+  padding: 15px;
+  background-color: #f8f8f8;
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(0,0,0,0.1);
+  animation: fadeIn 0.5s ease-in;
+  max-width: 100%;
+  overflow-x: hidden;
+  /* Remove fixed positioning */
+  position: static !important;
+  right: auto !important;
+  top: auto !important;
+  transform: none !important;
+  width: auto !important;
+}
+
+.winner {
+  color: #4CAF50;
+  font-size: clamp(22px, 4vw, 28px);
+  font-weight: bold;
+  text-align: center;
+  margin: 20px 0;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.1);
+}
+
+.eliminated {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.survived {
+  color: #4CAF50;
+  font-weight: bold;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+  .containerLobby {
+    grid-template-rows: auto auto auto auto auto;
+    grid-template-columns: 1fr;
+  }
+
+  .TitleLobby, .WelcomeLobby {
+    grid-column: 1 / 2;
+  }
+
+  .RoundInfo, .HostInfo {
+    grid-row: 3 / 4;
+    grid-column: 1 / 2;
+  }
+
+  .HostInfo {
+    grid-row: 4 / 5;
+  }
+
+  .PlayersLobby, .GameMessages {
+    grid-row: 5 / 6;
+    grid-column: 1 / 2;
+  }
+
+  .GameMessages {
+    grid-row: 6 / 7;
+  }
+
+  .GameControls {
+    grid-row: 7 / 8;
+    grid-column: 1 / 2;
+  }
+
+  .results-container {
+    position: static !important;
+    transform: none !important;
+    width: auto !important;
+    margin: 10px 0;
+  }
+}
+
+/* Input field improvements */
+input[type="number"] {
+  padding: 10px;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  margin-right: 10px;
+}
+
+input[type="number"]:focus {
+  border-color: #826cf6;
+  outline: none;
+  box-shadow: 0 0 5px rgba(130, 108, 246, 0.5);
+}
+
+/* Animation for results */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+

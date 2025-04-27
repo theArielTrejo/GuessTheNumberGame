@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Game Lobby</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cal+Sans&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="containerLobby">
+        <!-- Title Section -->
+        <div class="TitleLobby">
+            <h1>Guess The Nu#mber Game</h1>
+        </div>
+
+        <!-- Welcome Section -->
+        <div class="WelcomeLobby">
+            <h3>Welcome {{ username }} to {{ room.room_name }}!</h3>
+        </div>
+
+        <!-- Round Info Section -->
+        <div class="RoundInfo">
+            <div class="round-indicator">Round: <span id="round-number">{{ room.get('round_number', 1) }}</span></div>
+        </div>
+
+        <!-- Host Info Section -->
+        <div class="HostInfo">
+            <p><strong>Host:</strong> {{ room['host'] }}</p>
+            <p><strong>Your Username:</strong> {{ username }}</p>
+        </div>
+
+        <!-- Players List Section -->
+        <div class="PlayersLobby">
+            <h3>Players in this room:</h3>
+            <ul id="player-list">
+                {% if room.players %}
+                    {% for player in room.players %}
+                        <li>{{ player }}</li>
+                    {% endfor %}
+                {% else %}
+                    <li>No players in this room yet.</li>
+                {% endif %}
+            </ul>
+        </div>
+
+        <!-- Game Messages Section -->
+        <div class="GameMessages">
+            <p id="game-status-message">Waiting for the game to start...</p>
+
+            <!-- Results display -->
+            <div id="results-area" class="results-container" style="display: none;"></div>
+        </div>
+
+        <!-- Game Controls Section -->
+        <div class="GameControls">
+            {% if username == room['host'] %}
+                <button id="start-game" onclick="startGame('{{ room_code }}')" class="button">Start Game</button>
+
+                <!-- Debug button for host -->
+                <button id="debug-check-results" onclick="manualCheckResults()" class="button" style="background-color: #ff9800;">
+                    Check Results & Next Round
+                </button>
+
+                <!-- Hidden initially; shown after game starts -->
+                <div id="secret-form" style="display: none; margin-top: 20px;">
+                    <form id="number-input-form" onsubmit="submitSecretNumber(event, '{{ room_code }}')">
+                        <input type="password" id="secret-number" min="1" max="100" required placeholder="Enter Secret Number">
+                        <button type="submit" class="button">Submit Secret Number</button>
+                    </form>
+                </div>
+
+                <!-- Next round button (hidden initially) -->
+                <div id="next-round-container" style="display: none; margin-top: 20px;">
+                    <button id="next-round-button" onclick="startNextRound('{{ room_code }}', '{{ username }}')" class="button">
+                        Start Next Round
+                    </button>
+                </div>
+            {% endif %}
+
+            <!-- Message for non-host players -->
+            {% if username != room['host'] %}
+                <div id="waiting-message" style="display: block;">
+                    <p>Waiting for the host to start the game...</p>
+                    <p>Waiting for the host to enter their secret number...</p>
+                </div>
+
+                <div id="guess-buttons" style="display: none;">
+                    <p>Choose your guess:</p>
+                    <div id="guessed-numbers">
+                        <!-- Numbers will be dynamically added here -->
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+<script>
+// This script was my KRYPTONITE, I spent hours here
+const roomCode = "{{ room_code }}";
+const currentUsername = "{{ username }}";
+const isHost = currentUsername === "{{ room['host'] }}";
+// Add a variable to track if user has guessed
+let hasGuessedAlready = false;
+let resultsPollInterval;
+let gamePollInterval;
+let isEliminated = false;
+let lastRoundSeen = 0; // Track the last round number we've seen
+let hasSeenResults = false; // Track if results have been shown
+// Function to update the player roaster dynamically when they join/leave
+function updatePlayers() {
+    fetch(`/get_players/${roomCode}`)
+        .then(response => response.json())
+        .then(players => {
+            const playerList = document.getElementById('player-list');
+            playerList.innerHTML = '';
+            players.forEach(player => {
+                const li = document.createElement('li');
+                li.textContent = player;
+                playerList.appendChild(li);
+            });
+        })
+        .catch(error => console.error('Error fetching player list:', error));
+}
+
+// Function to validate the input as a number
+function validateNumberInput(event) {
+    const input = event.target;
+    const value = input.value;
+    // Only allow numeric input and restrict length to 3 digits (1-100)
+    if (value && !/^\d+$/.test(value)) {
+        input.setCustomValidity("Please enter only numeric digits");
+    } else {
+        input.setCustomValidity("");
+    }
+}
+
+// Hears for the host to start the game and sends a message to everyone if they started the game
+function startGame(roomCode) {
+    fetch(`/start_game/${roomCode}`, {
+        method: 'POST',
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Game started:', data);
+
+        document.getElementById('start-game').disabled = true;
+
+        if (isHost) {
+            document.getElementById('secret-form').style.display = 'block';
+        } else {
+            document.getElementById('game-status-message').textContent =
+                "The host has started the game. Waiting for them to enter the secret number...";
+        }
+    })
+    .catch(error => console.error('Error starting the game:', error));
+}
+// Gets the secret number and sends it to the players
+function submitSecretNumber(event, roomCode) {
+    event.preventDefault();
+
+    const secretNumber = parseInt(document.getElementById('secret-number').value);
+
+    fetch(`/set_secret_number/${roomCode}`, {
+        method: 'POST',
+        body: new URLSearchParams({
+            secret_number: secretNumber
+        }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log(data.message);
+
+        document.getElementById('secret-form').innerHTML = "<p>Secret number submitted!</p>";
+
+        if (isHost) {
+            // Host should start polling for results actively now
+            console.log("Host submitted secret number, starting to poll for results");
+            startPollingResults(); // the host use the same polling function, since host isnt seen as player
+        }
+
+        if (!isHost) {
+            document.getElementById('waiting-message').style.display = 'none'; // Hide waiting message
+            generateGuessButtons(data.options);  // options should be the 9 numbers sent from server
+            document.getElementById('guess-buttons').style.display = 'block'; // Show guess buttons
+            document.getElementById('game-status-message').textContent = "";
+        }
+    })
+    .catch(error => console.error('Error submitting secret number:', error));
+}
+// Display dynamically the buttons to the players
+function generateGuessButtons(numbers) {
+    console.log("Generating guess buttons with numbers:", numbers);
+    const container = document.getElementById('guessed-numbers');
+    container.innerHTML = ''; // Clear previous guesses
+
+    numbers.forEach(num => {
+      const btn = document.createElement('button');
+      btn.textContent = num;
+      btn.className = 'number-button';
+      btn.onclick = () => {
+        fetch(`/guess_number/${roomCode}/${currentUsername}`, {
+            method: 'POST',
+            body: new URLSearchParams({ guess: num }),
+        })
+        .then(response => response.json())
+        .then(data => {
+          console.log(data.message);
+
+          // Mark that this user has guessed
+          hasGuessedAlready = true;
+
+          // Show the result of the guess
+          container.innerHTML = `<p>${data.message}</p>`;
+          document.getElementById('game-status-message').textContent = data.message;
+
+          // Hide guess buttons
+          document.getElementById('guess-buttons').style.display = 'none';
+
+          // Optional: after 3 seconds, show "Waiting for next round..."
+          setTimeout(() => {
+            document.getElementById('game-status-message').textContent += " Waiting for the next round...";
+          }, 3000);
+
+          updatePlayers(); // Optional but helpful for updating status
+
+          // Start polling for round results
+          startPollingResults();
+        });
+      };
+      container.appendChild(btn);
+    });
+}
+
+// Polling is to get and check when the players are done answering to dynamically show the results
+function pollForGameStart() {
+    // Don't poll if user is host or if they're eliminated
+    if (isHost || isEliminated) {
+        return;
+    }
+
+    console.log("Polling for game start/status");
+
+    // First check if player is eliminated before showing buttons
+    fetch(`/get_round_results/${roomCode}`)
+    .then(response => response.json())
+    .then(roundData => {
+        // Check if user is eliminated
+        if (roundData.eliminated && roundData.eliminated.includes(currentUsername)) {
+            console.log("User is eliminated, stopping polling");
+            isEliminated = true;
+            if (gamePollInterval) clearInterval(gamePollInterval);
+
+            // Only redirect if results have been shown already
+            if (hasSeenResults) {
+                console.log("Redirecting eliminated player");
+                window.location.href = `/eliminated/${roomCode}/${currentUsername}`;
+            }
+            return;
+        }
+
+        const currentRound = roundData.round_number || 1;
+        console.log(`Current round: ${currentRound}, Last round seen: ${lastRoundSeen}, HasGuessed: ${hasGuessedAlready}`);
+
+        // Now check for game data only if we're not eliminated
+        fetch(`/get_game_data/${roomCode}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log("Poll game data response:", data);
+
+            // FIXED CONDITION: Show buttons when game is ready AND either:
+            // 1. It's a new round we haven't processed yet (currentRound > lastRoundSeen)
+            // OR
+            // 2. We're in the current round but haven't guessed yet
+            if (data.ready && data.options && data.options.length > 0) {
+                // Modified condition to handle both cases
+                if ((currentRound > lastRoundSeen || (currentRound === lastRoundSeen && !hasGuessedAlready))) {
+                    console.log(`Showing buttons for round ${currentRound}. Last round seen: ${lastRoundSeen}`);
+                    lastRoundSeen = currentRound;
+                    hasGuessedAlready = false;
+                    hasSeenResults = false; // Reset results seen flag for new round
+
+                    document.getElementById('waiting-message').style.display = 'none';
+                    document.getElementById('game-status-message').textContent = `Round ${currentRound}: Choose your guess!`;
+
+                    generateGuessButtons(data.options);
+                    document.getElementById('guess-buttons').style.display = 'block';
+                }
+            }
+        });
+    });
+}
+// Start the data collection live, it updates every couple seconds to check if everyone is done
+function startPollingResults() {
+    console.log(`${isHost ? 'Host' : 'Player'} starting to poll for results`);
+
+    // Clear any existing polling interval
+    if (resultsPollInterval) {
+        clearInterval(resultsPollInterval);
+    }
+
+    resultsPollInterval = setInterval(() => {
+        fetch(`/get_round_results/${roomCode}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log(`${isHost ? 'Host' : 'Player'} received results data:`, data);
+
+            if (data.results_ready) {
+                console.log(`${isHost ? 'Host' : 'Player'} showing results`);
+                clearInterval(resultsPollInterval);
+                showResults(data);
+                hasSeenResults = true; // Mark that we've seen results
+
+                // Check if player is eliminated
+                if (!isHost && data.eliminated && data.eliminated.includes(currentUsername)) {
+                    isEliminated = true;
+                    console.log("Player is eliminated");
+
+                    // Use setTimeout for redirect to give time to see results
+                    setTimeout(() => {
+                        console.log("Redirecting eliminated player after showing results");
+                        window.location.href = `/eliminated/${roomCode}/${currentUsername}`;
+                    }, 5000);
+
+                    // Stop all polling
+                    if (gamePollInterval) clearInterval(gamePollInterval);
+                    return; // Don't continue with normal flow
+                }
+
+                // For host, explicitly check if next round button should be shown
+                if (isHost && data.survivors && data.survivors.length > 0 && !data.winner) {
+                    console.log("Host showing next round button from polling");
+                    document.getElementById('next-round-container').style.display = 'block';
+                }
+
+                // For surviving players, after seeing results, start polling for next round's game data
+                if (!isHost && !data.winner && !data.eliminated?.includes(currentUsername)) {
+                    console.log(`Player: Round ${data.round_number} complete, starting to poll for next round setup`);
+                    console.log(`Setting lastRoundSeen = ${data.round_number}`);
+                    // Store the current round we've seen
+                    lastRoundSeen = data.round_number || 1;
+                    hasGuessedAlready = false;
+
+                    // Start polling for new game data after a brief delay
+                    setTimeout(() => {
+                        if (gamePollInterval) {
+                            clearInterval(gamePollInterval);
+                        }
+                        gamePollInterval = setInterval(pollForGameStart, 1500);
+                    }, 2000);
+                }
+            }
+        });
+    }, 2000);
+}
+
+// Host-specific polling function, since host isnt considered a player
+function hostPollForResults() {
+    console.log("Host polling for results...");
+    fetch(`/get_round_results/${roomCode}`)
+    .then(response => response.json())
+    .then(data => {
+        console.log("Host received results data:", data);
+
+        // If there are results to show, display them
+        if (data.results_ready && !document.getElementById('results-area').innerHTML) {
+            console.log("Host showing results:", data);
+            showResults(data);
+        }
+
+        // Explicitly check if we should show next round button
+        if (data.results_ready && data.survivors && data.survivors.length > 0 && !data.winner) {
+            console.log("Results ready, survivors present, showing next round button");
+            document.getElementById('next-round-container').style.display = 'block';
+        }
+    })
+    .catch(error => console.error("Error polling for results:", error));
+}
+// Debug button I added to force a result summary
+function manualCheckResults() {
+    console.log("Host manually checking results");
+
+    // First, check if next round button container exists
+    let container = document.getElementById('next-round-container');
+    if (!container) {
+        console.log("Creating missing next round container");
+        container = document.createElement('div');
+        container.id = 'next-round-container';
+        container.style.display = 'block'; // Show it immediately
+        container.style.marginTop = '20px';
+
+        const nextRoundBtn = document.createElement('button');
+        nextRoundBtn.id = 'next-round-button';
+        nextRoundBtn.className = 'button';
+        nextRoundBtn.textContent = 'Start Next Round';
+        nextRoundBtn.onclick = () => startNextRound(roomCode, currentUsername);
+
+        container.appendChild(nextRoundBtn);
+        document.body.appendChild(container);
+    } else {
+        // Make sure the container is visible
+        container.style.display = 'block';
+    }
+
+    // Then fetch the latest results
+    fetch(`/get_round_results/${roomCode}`)
+    .then(response => response.json())
+    .then(data => {
+        console.log("Manual check results:", data);
+
+        // Show results regardless of ready state
+        showResults(data);
+    })
+    .catch(error => console.error("Error manually checking results:", error));
+}
+
+// show the results and summarizes it to the players
+function showResults(data) {
+    console.log("Showing results:", data);
+
+    const resultDiv = document.getElementById('results-area');
+    resultDiv.style.display = 'block';
+
+    // Position the results on the right side of the screen
+    resultDiv.style.position = 'fixed';
+    resultDiv.style.right = '20px';
+    resultDiv.style.top = '50%';
+    resultDiv.style.transform = 'translateY(-50%)';
+    resultDiv.style.width = '300px';
+    resultDiv.style.maxHeight = '80vh';
+    resultDiv.style.overflowY = 'auto';
+    resultDiv.style.zIndex = '1000';
+    resultDiv.style.padding = '20px';
+    resultDiv.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
+
+    resultDiv.innerHTML = '<h3>Round Results:</h3>';
+
+    // Safely determine if current user is eliminated
+    const eliminated = data.eliminated || [];
+    isEliminated = eliminated.includes(currentUsername); // Update global flag
+
+    // Get survivors and eliminated lists safely
+    const survivors = data.survivors || [];
+
+    // Format and display results
+    if (typeof data.results === 'string' && data.results) {
+        const resultLines = data.results.split('\n');
+        resultLines.forEach(line => {
+            if (line.trim()) {
+                const p = document.createElement('p');
+
+                // Add color based on elimination status
+                if (line.includes('Eliminated')) {
+                    p.className = 'eliminated';
+                } else if (line.includes('Survives')) {
+                    p.className = 'survived';
+                } else if (line.includes('WINNER')) {
+                    p.className = 'winner';
+                }
+
+                p.textContent = line;
+                resultDiv.appendChild(p);
+            }
+        });
+    } else {
+        // If no results string, create a basic one
+        const p = document.createElement('p');
+        p.textContent = "Round complete! " +
+            (survivors.length ? `${survivors.length} players survived.` : "No survivors!");
+        resultDiv.appendChild(p);
+    }
+
+    // If there's a winner
+    if (data.winner) {
+        const winnerP = document.createElement('p');
+        winnerP.className = 'winner';
+        winnerP.textContent = `${data.winner} has won the game!`;
+        resultDiv.appendChild(winnerP);
+
+        // Show play again button
+        const playAgainBtn = document.createElement('button');
+        playAgainBtn.textContent = "Play Again";
+        playAgainBtn.className = "button";
+        playAgainBtn.onclick = () => window.location.href = '/';
+        resultDiv.appendChild(playAgainBtn);
+    }
+    // If there are survivors and user is host, ALWAYS show next round button
+    else if (survivors.length > 0 && isHost) {
+        console.log("Showing next round button for host");
+
+        // Always ensure the container exists
+        let container = document.getElementById('next-round-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'next-round-container';
+            container.style.marginTop = '20px';
+
+            const nextRoundBtn = document.createElement('button');
+            nextRoundBtn.id = 'next-round-button';
+            nextRoundBtn.className = 'button';
+            nextRoundBtn.textContent = 'Start Next Round';
+            nextRoundBtn.onclick = () => startNextRound(roomCode, currentUsername);
+
+            container.appendChild(nextRoundBtn);
+            document.body.appendChild(container);
+        }
+
+        // Make it visible
+        container.style.display = 'block';
+        console.log("Next round container display set to:", container.style.display);
+    }
+
+    // Update round number display
+    document.getElementById('round-number').textContent = data.round_number || 1;
+
+    // Mark that we've seen results
+    hasSeenResults = true;
+}
+// Checks the poll to see if everyone is done and starts the new round
+// Starts new poll and new players with new buttons
+function startNextRound(roomCode, username) {
+    console.log("Starting next round...");
+
+    // Clear existing polling
+    if (resultsPollInterval) clearInterval(resultsPollInterval);
+    if (gamePollInterval) clearInterval(gamePollInterval);
+
+    document.getElementById('game-status-message').textContent = "Preparing next round...";
+
+    fetch(`/start_next_round/${roomCode}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            username: username
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.error || `Server returned ${response.status}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Next round response:', data);
+
+        // Update UI for next round
+        document.getElementById('next-round-container').style.display = 'none';
+
+        // Reset secret form for host
+        if (isHost) {
+            const secretForm = document.getElementById('secret-form');
+            if (secretForm) {
+                secretForm.innerHTML = `
+                    <form id="number-input-form" onsubmit="submitSecretNumber(event, '${roomCode}')">
+                        <input type="number" id="secret-number" min="1" max="100" required placeholder="Enter Secret Number">
+                        <button type="submit" class="button">Submit Secret Number</button>
+                    </form>
+                `;
+                secretForm.style.display = 'block';
+            }
+        } else {
+            // For non-host players, reset UI for next round
+            document.getElementById('waiting-message').style.display = 'block';
+            document.getElementById('guess-buttons').style.display = 'none';
+            document.getElementById('game-status-message').textContent = `Round ${data.round_number}: Waiting for host to enter secret number...`;
+        }
+
+        // Once host submits secret number, show guess buttons again
+        listenForHostSecretSubmission(roomCode);
+
+        // Reset game state
+        hasGuessedAlready = false;
+        hasSeenResults = false;
+        lastRoundSeen = data.round_number - 1;
+
+        // Update round display
+        document.getElementById('round-number').textContent = data.round_number;
+
+        // Reset game state for players
+        hasGuessedAlready = false;
+        hasSeenResults = false;
+
+        // IMPORTANT FIX: Set lastRoundSeen to current round - 1
+        // This ensures the condition (currentRound > lastRoundSeen) will be true when the next round starts
+        lastRoundSeen = data.round_number - 1;
+        console.log(`Next round: Setting lastRoundSeen = ${lastRoundSeen}`);
+
+        // Update player list
+        updatePlayers();
+
+        // Restart polling for non-host players - IMPORTANT
+        if (!isHost && !isEliminated) {
+            console.log("Player: Starting game data polling for next round");
+            if (gamePollInterval) clearInterval(gamePollInterval);
+            gamePollInterval = setInterval(pollForGameStart, 1000); // Reduced interval for faster response
+        }
+    })
+    .catch(error => {
+        console.error('Error starting next round:', error);
+        document.getElementById('game-status-message').textContent =
+            'Error starting next round: ' + error.message;
+    });
+}
+
+function listenForHostSecretSubmission(roomCode) {
+    const secretForm = document.getElementById('secret-form');
+    if (secretForm) {
+        secretForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            // When host submits the secret number, show the guess buttons again for the players
+            document.getElementById('guess-buttons').style.display = 'block';
+            document.getElementById('game-status-message').textContent = "It's your turn to guess!";
+        });
+    }
+}
+
+
+//window.onload function, executes functions when everything is loaded
+window.onload = function() {
+    updatePlayers();
+
+    // Check current round to set lastRoundSeen
+    fetch(`/get_round_results/${roomCode}`)
+        .then(response => response.json())
+        .then(data => {
+            // IMPORTANT FIX: Initialize lastRoundSeen to round number - 1
+            // This ensures new rounds will trigger button display
+            if (data.round_number) {
+                lastRoundSeen = data.round_number - 1;
+                console.log(`Initialized lastRoundSeen to ${lastRoundSeen}`);
+            }
+
+            // Set eliminated flag based on data
+            if (data.eliminated && data.eliminated.includes(currentUsername)) {
+                isEliminated = true;
+                console.log("User marked as eliminated on load");
+            }
+        });
+
+
+    // Ensure next round container exists for host
+    if (isHost) {
+        let container = document.getElementById('next-round-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'next-round-container';
+            container.style.display = 'none';
+            container.style.marginTop = '20px';
+
+            const nextRoundBtn = document.createElement('button');
+            nextRoundBtn.id = 'next-round-button';
+            nextRoundBtn.className = 'button';
+            nextRoundBtn.textContent = 'Start Next Round';
+            nextRoundBtn.onclick = () => startNextRound(roomCode, currentUsername);
+
+            container.appendChild(nextRoundBtn);
+            document.body.appendChild(container);
+        }
+
+        console.log("Setting up host polling");
+        // Check for results immediately
+        hostPollForResults();
+
+        // And then check periodically
+        setInterval(hostPollForResults, 2000);
+
+        // Also ensure we're listening for game status changes
+        setInterval(() => {
+            fetch(`/debug_room/${roomCode}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Host room debug data:", data);
+
+                    // If results_ready is true, make sure we refresh our view
+                    if (data.room_state && data.room_state.results_ready) {
+                        hostPollForResults();
+                    }
+                });
+        }, 3000);
+    }
+
+    // Add debug button for host if not already added
+    if (isHost && !document.getElementById('debug-check-results')) {
+        const debugBtn = document.createElement('button');
+        debugBtn.id = 'debug-check-results';
+        debugBtn.className = 'button';
+        debugBtn.style.backgroundColor = '#ff9800';
+        debugBtn.textContent = 'Check Results & Next Round';
+        debugBtn.onclick = manualCheckResults;
+
+        // Find a good place to add it - after the start game button
+        const startGameBtn = document.getElementById('start-game');
+        if (startGameBtn && startGameBtn.parentNode) {
+            startGameBtn.parentNode.appendChild(debugBtn);
+        } else {
+            // Fallback to adding at end of body
+            document.body.appendChild(debugBtn);
+        }
+    }
+
+    // Check if there's already a guess or results in the status message
+    const statusText = document.getElementById('game-status-message').textContent;
+    if (statusText.includes('Guess received') || statusText.includes('Round Results')) {
+        hasGuessedAlready = true;
+    }
+
+    // Check for results right away in case we're rejoining
+    fetch(`/get_round_results/${roomCode}`)
+        .then(response => response.json())
+        .then(data => {
+            console.log("Initial results check:", data);
+
+            if (data.results_ready) {
+                showResults(data);
+
+                // Explicitly check if we need to show the next round button
+                if (isHost && data.survivors && data.survivors.length > 0 && !data.winner) {
+                    console.log("Should show next round button on initial load");
+                    document.getElementById('next-round-container').style.display = 'block';
+                }
+
+                // Check if user is eliminated
+                if (!isHost && data.eliminated && data.eliminated.includes(currentUsername)) {
+                    isEliminated = true;
+                    console.log("User is eliminated on load, redirecting soon");
+                    setTimeout(() => {
+                        window.location.href = `/eliminated/${roomCode}/${currentUsername}`;
+                    }, 5000);
+                }
+            }
+
+            // Update round number regardless
+            if (data.round_number) {
+                document.getElementById('round-number').textContent = data.round_number;
+            }
+
+            // If we're a player and we're not eliminated, start polling for game data
+            // even if we're joining mid-game
+            if (!isHost && !isEliminated) {
+                console.log("Player starting game data polling on load");
+                if (gamePollInterval) clearInterval(gamePollInterval);
+                gamePollInterval = setInterval(pollForGameStart, 1500);
+            }
+        })
+        .catch(error => {
+            console.error("Error checking initial results:", error);
+        });
+
+    // Debug the current state
+    console.log("Page loaded with state:", {
+        isHost: isHost,
+        hasGuessedAlready: hasGuessedAlready,
+        isEliminated: isEliminated,
+        roomCode: roomCode,
+        currentUsername: currentUsername,
+        secretForm: document.getElementById('secret-form') ? 'exists' : 'missing',
+        nextRoundBtn: document.getElementById('next-round-container') ? 'exists' : 'missing',
+        resultsArea: document.getElementById('results-area') ? 'exists' : 'missing',
+    });
+
+    // Update player list periodically
+    setInterval(updatePlayers, 3000);
+}
+
+function submitGuess(event, roomCode) {
+    event.preventDefault();  // Prevent form submission
+
+    const guess = document.getElementById('guess-input').value;
+    document.getElementById('game-status-message').textContent = "Waiting for results...";
+
+    // Disable guess input and buttons
+    document.getElementById('guess-buttons').style.display = 'none';
+
+    // Send the guess to the server
+    fetch(`/submit_guess/${roomCode}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            username: currentUsername,
+            guess: guess
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Guess submitted:', data);
+        // Handle the response from the server (update game status, check for results, etc.)
+    })
+    .catch(error => {
+        console.error('Error submitting guess:', error);
+        document.getElementById('game-status-message').textContent = 'Error submitting guess';
+    });
+}
+
+</script>
+</body>
+</html>
