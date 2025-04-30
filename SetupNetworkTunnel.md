@@ -1,5 +1,5 @@
 
- # NOTE: THIS ONLY WORKS ON HOME NETWORKS, UTRGV ISOLATES NETWORKS FROM EACHOTHER FOR SECURITY REASONS
+ ### NOTE: THIS ONLY WORKS ON HOME NETWORKS, UTRGV ISOLATES NETWORKS FROM EACHOTHER FOR SECURITY REASONS
 A quick how to guide on how to set up a network tunnel using GuessTheNumberGame as an example...
 
 1. Uploading your code to your virtual machine
