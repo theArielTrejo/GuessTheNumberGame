@@ -1,5 +1,5 @@
-
- ### NOTE: THIS ONLY WORKS ON HOME NETWORKS, UTRGV ISOLATES NETWORKS FROM EACHOTHER FOR SECURITY REASONS
+## 2 Ways to set up a Network Tunnel
+ ### 1. THIS ONLY WORKS ON HOME NETWORKS, UTRGV ISOLATES NETWORKS FROM EACHOTHER FOR SECURITY REASONS
 A quick how to guide on how to set up a network tunnel using GuessTheNumberGame as an example...
 
 1. Uploading your code to your virtual machine
@@ -23,6 +23,24 @@ A quick how to guide on how to set up a network tunnel using GuessTheNumberGame 
   - Debugging:
     - Run sudo lsof -i -P -n | grep LISTEN
       - This listens to ports in your VM and shows you if they are running
+
+
     - Try accessing your application through your phone by entering the IP and port
       - http://yourIP:8080 
 
+ ### 2. THIS ALLOWS ANY NETWORK TO JOIN THE WEBSITE
+ 1. Install Node.js
+    - Localtunnel is a free open-source library that allows you to expose a local server to the internet. It creates a secure tunnel from your local machine to a public accessible URL.
+    - If you are using your personal computer, download & install Node.js from the official website.
+    - If you are on your VM, to download Node.js, enter this prompt: sudo apt install nodejs npm
+ 2. Install LocalTunnel
+    - Enter this prompt: npm install -g localtunnel
+ 3. Set up your url with custom subdomain
+    - lt --port 5002 --subdomain myapp
+    - A url will generate and show, something like this: https://myapp.loca.lt
+ 4. Enter the URL & Password
+    - Localtunnel enforces you to enter the password to enter the website to enforce security.
+    - Usually the password is the IP of your computer or your VM
+    - Only one edge device per network is required to enter the password.
+      
+ You are now all set!
